@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import classnames from 'classnames';
 import { useNavigate } from 'react-router-dom';
 import { DicomMetadataStore, MODULE_TYPES } from '@ohif/core';
@@ -50,7 +50,7 @@ type LocalProps = {
 function Local({ modePath }: LocalProps) {
   const navigate = useNavigate();
   const dropzoneRef = useRef();
-  const [dropInitiated, setDropInitiated] = React.useState(false);
+  const [dropInitiated, setDropInitiated] = useState(false);
 
   // Initializing the dicom local dataSource
   const dataSourceModules = extensionManager.modules[MODULE_TYPES.DATA_SOURCE];
@@ -71,15 +71,12 @@ function Local({ modePath }: LocalProps) {
     '@ohif/extension-dicom-microscopy'
   );
 
-  const onDrop = async acceptedFiles => {
+  const onDrop = async (acceptedFiles) => {
     const studies = await filesToStudies(acceptedFiles, dataSource);
 
     const query = new URLSearchParams();
 
     if (microscopyExtensionLoaded) {
-      // TODO: for microscopy, we are forcing microscopy mode, which is not ideal.
-      //     we should make the local drag and drop navigate to the worklist and
-      //     there user can select microscopy mode
       const smStudies = studies.filter(id => {
         const study = DicomMetadataStore.getStudy(id);
         return (
@@ -89,12 +86,10 @@ function Local({ modePath }: LocalProps) {
 
       if (smStudies.length > 0) {
         smStudies.forEach(id => query.append('StudyInstanceUIDs', id));
-
         modePath = 'microscopy';
       }
     }
 
-    // Todo: navigate to work list and let user select a mode
     studies.forEach(id => query.append('StudyInstanceUIDs', id));
     query.append('datasources', 'dicomlocal');
 
@@ -106,6 +101,29 @@ function Local({ modePath }: LocalProps) {
     document.body.classList.add('bg-black');
     return () => {
       document.body.classList.remove('bg-black');
+    };
+  }, []);
+
+  // Step 1: Send 'viewerReady' message to the parent (Angular) window when the React page is loaded
+  useEffect(() => {
+    // Send the 'viewerReady' message to the parent window
+    window.top.postMessage({type: 'ohifReady'}, '*');
+    console.log(`Sent ohifReady message to parent`);
+
+    // Step 2: Listen for messages from the Angular application (parent window)
+    const handlePostMessage = (event) => {
+      // You may want to validate the origin of the event for security purposes
+      // if (event.origin !== 'expected-origin') return;
+      console.log(`Received message from parent`);
+      const blobs = event.data;
+    };
+
+    // Add event listener for postMessage
+    window.addEventListener('message', handlePostMessage);
+
+    // Cleanup on component unmount
+    return () => {
+      window.removeEventListener('message', handlePostMessage);
     };
   }, []);
 

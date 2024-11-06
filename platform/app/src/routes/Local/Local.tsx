@@ -108,14 +108,9 @@ function Local({ modePath }: LocalProps) {
   useEffect(() => {
     // Send the 'viewerReady' message to the parent window
     window.top.postMessage({type: 'ohifReady'}, '*');
-    console.log(`Sent ohifReady message to parent`);
-
-    // Step 2: Listen for messages from the Angular application (parent window)
     const handlePostMessage = (event) => {
-      // You may want to validate the origin of the event for security purposes
-      // if (event.origin !== 'expected-origin') return;
-      console.log(`Received message from parent`);
       const blobs = event.data;
+      onDrop(blobs);
     };
 
     // Add event listener for postMessage

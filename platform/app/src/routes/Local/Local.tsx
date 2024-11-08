@@ -104,22 +104,41 @@ function Local({ modePath }: LocalProps) {
     };
   }, []);
 
-  // Step 1: Send 'viewerReady' message to the parent (Angular) window when the React page is loaded
+  const fetchBlobs = async (objectUrls: string[]) => {
+    return await Promise.all(
+      objectUrls.map(async (url: string) => {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return blob;
+      })
+    );
+  };
+  // Handle messages and viewerReady logic
   useEffect(() => {
-    // Send the 'viewerReady' message to the parent window
-    window.top.postMessage({type: 'ohifReady'}, '*');
-    const handlePostMessage = (event) => {
-      const blobs = event.data;
-      onDrop(blobs);
+    const handlePostMessage = async (event: MessageEvent) => {
+      if (event.data.type !== 'ohifReady') {
+        const blobs = event.data;
+        const objectUrls = blobs.map((blob: Blob) => URL.createObjectURL(blob));
+        localStorage.setItem('ohifBlobCollection', JSON.stringify(objectUrls));
+        const fullUrl = `${window.location.origin}/local?nativeViewer=true`;
+        setTimeout(() => window.open(fullUrl, '_blank'), 1000);
+      }
     };
 
-    // Add event listener for postMessage
-    window.addEventListener('message', handlePostMessage);
+    const urlParams = new URLSearchParams(window.location.search);
+    const nativeViewer = urlParams.get('nativeViewer');
 
-    // Cleanup on component unmount
-    return () => {
-      window.removeEventListener('message', handlePostMessage);
-    };
+    if (nativeViewer === 'true') {
+      const objectUrls = JSON.parse(localStorage.getItem('ohifBlobCollection') || '[]');
+      if (objectUrls.length > 0) {
+        fetchBlobs(objectUrls).then(onDrop);
+      }
+    } else {
+      window.addEventListener('message', handlePostMessage);
+      window.top.postMessage({ type: 'ohifReady' }, '*');
+    }
+
+    return () => window.removeEventListener('message', handlePostMessage);
   }, []);
 
   return (

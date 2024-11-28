@@ -9,7 +9,9 @@ const DICOMFileLoader = new (class extends FileLoader {
   }
 
   getDataset(image, imageId) {
-    const dicomData = dcmjs.data.DicomMessage.readFile(image);
+    const dicomData = dcmjs.data.DicomMessage.readFile(image, {
+      ignoreErrors: true,
+    });
 
     const dataset = dcmjs.data.DicomMetaDictionary.naturalizeDataset(dicomData.dict);
 

@@ -30,7 +30,14 @@ function Header({
   // dependency should be dropped
   const onClickReturn = () => {
     if (isReturnEnabled && onClickReturnButton) {
-      onClickReturnButton();
+      // If current url contains /viewer, replace /viewer with /tmtv
+      if (window.location.pathname.includes('/viewer/dicomjson')) {
+        window.location.href = window.location.href.replace('/viewer/dicomjson', '/tmtv/dicomjson');
+      } else if (window.location.pathname.includes('/tmtv/dicomjson')) {
+        window.location.href = window.location.href.replace('/tmtv/dicomjson', '/viewer/dicomjson');
+      } else {
+        onClickReturnButton();
+      }
     }
   };
 

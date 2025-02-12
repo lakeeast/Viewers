@@ -118,10 +118,7 @@ function Local({ modePath }: LocalProps) {
     const handlePostMessage = async (event: MessageEvent) => {
       if (event.data.type !== 'ohifReady') {
         const blobs = event.data;
-        const objectUrls = blobs.map((blob: Blob) => URL.createObjectURL(blob));
-        localStorage.setItem('ohifBlobCollection', JSON.stringify(objectUrls));
-        const fullUrl = `${window.location.origin}/local?nativeViewer=true`;
-        setTimeout(() => window.open(fullUrl, '_blank'), 1000);
+        onDrop(blobs);
       }
     };
 

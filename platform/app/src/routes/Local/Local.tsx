@@ -133,6 +133,7 @@ function Local({ modePath }: LocalProps) {
     } else {
       window.addEventListener('message', handlePostMessage);
       window.top.postMessage({ type: 'ohifReady' }, '*');
+      console.log(`Local mode ready. Just called postMessage with ohifReady`);
     }
 
     return () => window.removeEventListener('message', handlePostMessage);

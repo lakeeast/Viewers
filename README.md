@@ -334,3 +334,11 @@ MIT © [OHIF](https://github.com/OHIF)
 <!-- prettier-ignore-end -->
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FOHIF%2FViewers.svg?type=large&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2FOHIF%2FViewers?ref=badge_large&issueType=license)
+
+## How to deploy?
+yarn install
+cd platform/app/public
+NODE_ENV=production PUBLIC_URL=/ohif/ APP_CONFIG=config/ohif.js yarn build
+cd /Volumes/SanDisk/lakeeast/Viewers
+npm run wdeploy
+

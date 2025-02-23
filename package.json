@@ -62,7 +62,8 @@
     "lerna:restore": "./netlify-lerna-restore.sh",
     "lerna:customVersion": "node version.mjs",
     "link-list": "npm ls --depth=0 --link=true",
-    "deploy": "aws s3 sync platform/app/dist s3://dicom.docnosys.com --profile Chen"
+    "deploy": "aws s3 sync platform/app/dist s3://dicom.docnosys.com --profile Chen",
+    "wdeploy": "aws s3 sync platform/app/dist s3://ohif.docnosys.com --profile Chen"
   },
   "dependencies": {
     "execa": "^8.0.1"

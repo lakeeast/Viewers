@@ -168,20 +168,10 @@ function Local({ modePath }: LocalProps) {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <p className="text-base text-blue-300">
-                      Note: You data is not uploaded to any server, it will stay in your local
-                      browser application
-                    </p>
-                    <p className="text-xg text-primary-active pt-6 font-semibold">
-                      Drag and Drop DICOM files here to load them in the Viewer
-                    </p>
-                    <p className="text-lg text-blue-300">Or click to </p>
+                    <p className="text-xg text-primary-active pt-6 font-semibold">数据加载中，请稍侯...</p>
+
                   </div>
                 )}
-              </div>
-              <div className="flex justify-around pt-4 ">
-                {getLoadButton(onDrop, 'Load files', false)}
-                {getLoadButton(onDrop, 'Load folders', true)}
               </div>
             </div>
           </div>

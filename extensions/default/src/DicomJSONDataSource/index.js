@@ -4,7 +4,6 @@ import qs from 'query-string';
 
 import getImageId from '../DicomWebDataSource/utils/getImageId';
 import getDirectURL from '../utils/getDirectURL';
-
 const metadataProvider = OHIF.classes.MetadataProvider;
 
 const mappings = {
@@ -76,8 +75,18 @@ function createDicomJSONApi(dicomJsonConfig) {
         });
       }
 
-      const response = await fetch(url);
-      const data = await response.json();
+      let data = null;
+      if (url === 'data-injected' && window.location.hash) {
+        const base64Data = window.location.hash.substring(1);
+        const jsonString = atob(base64Data);
+        data = JSON.parse(jsonString);
+      } else if (url === 'data-storage') {
+        const dataStorage = window.localStorage.getItem('data-storage');
+        data = JSON.parse(dataStorage);
+      } else {
+        const response = await fetch(url);
+        data = await response.json();
+      }
 
       let StudyInstanceUID;
       let SeriesInstanceUID;
@@ -115,7 +124,7 @@ function createDicomJSONApi(dicomJsonConfig) {
     },
     query: {
       studies: {
-        mapParams: () => {},
+        mapParams: () => { },
         search: async param => {
           const [key, value] = Object.entries(param)[0];
           const mappedParam = mappings[key];

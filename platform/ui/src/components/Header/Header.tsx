@@ -32,7 +32,15 @@ function Header({
     if (isReturnEnabled && onClickReturnButton) {
       // If current url contains /viewer, replace /viewer with /tmtv
       if (window.location.pathname.includes('/viewer/dicomjson')) {
-        window.location.href = window.location.href.replace('/viewer/dicomjson', '/tmtv/dicomjson');
+        window.location.href = window.location.href.replace(
+          '/viewer/dicomjson',
+          '/segmentation/dicomjson'
+        );
+      } else if (window.location.pathname.includes('/segmentation/dicomjson')) {
+        window.location.href = window.location.href.replace(
+          '/segmentation/dicomjson',
+          '/tmtv/dicomjson'
+        );
       } else if (window.location.pathname.includes('/tmtv/dicomjson')) {
         window.location.href = window.location.href.replace('/tmtv/dicomjson', '/viewer/dicomjson');
       } else {

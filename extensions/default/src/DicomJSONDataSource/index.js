@@ -50,9 +50,9 @@ const findStudies = (key, value) => {
   let studies = [];
   _store.urls.map(metaData => {
     metaData.studies.map(aStudy => {
-      if (aStudy[key] === value) {
+      //if (aStudy[key] === value) {
         studies.push(aStudy);
-      }
+      //}
     });
   });
   return studies;

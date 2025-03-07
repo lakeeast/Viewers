@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import classnames from 'classnames';
-import PropTypes, { object } from 'prop-types';
+import PropTypes from 'prop-types';
 import { Link, useNavigate } from 'react-router-dom';
 import moment from 'moment';
 import qs from 'query-string';
 import isEqual from 'lodash.isequal';
 import { useTranslation } from 'react-i18next';
-//
 import filtersMeta from './filtersMeta.js';
 import { useAppConfig } from '@state';
 import { useDebounce, useSearchParams } from '@hooks';
 import { utils, hotkeys } from '@ohif/core';
-
 import {
   Icon,
   StudyListExpandedRow,
@@ -30,24 +28,26 @@ import {
   Button,
   ButtonEnums,
 } from '@ohif/ui';
-
 import { Types } from '@ohif/ui';
-
 import i18n from '@ohif/i18n';
 import { Onboarding } from '@ohif/ui-next';
 
 const PatientInfoVisibility = Types.PatientInfoVisibility;
-
 const { sortBySeriesDate } = utils;
-
 const { availableLanguages, defaultLanguage, currentLanguage } = i18n;
-
 const seriesInStudiesMap = new Map();
 
-/**
- * TODO:
- * - debounce `setFilterValues` (150ms?)
- */
+interface WorkListProps {
+  data: any[];
+  dataTotal: number;
+  isLoadingData: boolean;
+  dataSource: any;
+  hotkeysManager?: any;
+  dataPath?: string;
+  onRefresh: () => void;
+  servicesManager: any;
+}
+
 function WorkList({
   data: studies,
   dataTotal: studiesTotal,
@@ -57,13 +57,11 @@ function WorkList({
   dataPath,
   onRefresh,
   servicesManager,
-}: withAppTypes) {
-  const { hotkeyDefinitions, hotkeyDefaults } = hotkeysManager;
+}: WorkListProps) {
+  const { hotkeyDefinitions = {}, hotkeyDefaults = [] } = hotkeysManager || {};
   const { show, hide } = useModal();
   const { t } = useTranslation();
-  // ~ Modes
   const [appConfig] = useAppConfig();
-  // ~ Filters
   const searchParams = useSearchParams();
   const navigate = useNavigate();
   const STUDIES_LIMIT = 101;
@@ -71,9 +69,6 @@ function WorkList({
   const [sessionQueryFilterValues, updateSessionQueryFilterValues] = useSessionStorage({
     key: 'queryFilterValues',
     defaultValue: queryFilterValues,
-    // ToDo: useSessionStorage currently uses an unload listener to clear the filters from session storage
-    // so on systems that do not support unload events a user will NOT be able to alter any existing filter
-    // in the URL, load the page and have it apply.
     clearOnUnload: true,
   });
   const [filterValues, _setFilterValues] = useState({
@@ -83,11 +78,6 @@ function WorkList({
 
   const debouncedFilterValues = useDebounce(filterValues, 200);
   const { resultsPerPage, pageNumber, sortBy, sortDirection } = filterValues;
-
-  /*
-   * The default sort value keep the filters synchronized with runtime conditional sorting
-   * Only applied if no other sorting is specified and there are less than 101 studies
-   */
 
   const canSort = studiesTotal < STUDIES_LIMIT;
   const shouldUseDefaultSort = sortBy === '' || !sortBy;
@@ -102,10 +92,8 @@ function WorkList({
         const ascendingSortModifier = -1;
         return _sortStringDates(s1, s2, ascendingSortModifier);
       }
-
       const s1Prop = s1[sortBy];
       const s2Prop = s2[sortBy];
-
       if (typeof s1Prop === 'string' && typeof s2Prop === 'string') {
         return s1Prop.localeCompare(s2Prop) * sortModifier;
       } else if (typeof s1Prop === 'number' && typeof s2Prop === 'number') {
@@ -117,20 +105,16 @@ function WorkList({
       } else if (sortBy === 'studyDate') {
         return _sortStringDates(s1, s2, sortModifier);
       }
-
       return 0;
     });
   }
 
-  // ~ Rows & Studies
-  const [expandedRows, setExpandedRows] = useState([]);
-  const [studiesWithSeriesData, setStudiesWithSeriesData] = useState([]);
+  const [expandedRows, setExpandedRows] = useState<number[]>([]);
+  const [studiesWithSeriesData, setStudiesWithSeriesData] = useState<string[]>([]);
   const numOfStudies = studiesTotal;
-  const querying = useMemo(() => {
-    return isLoadingData || expandedRows.length > 0;
-  }, [isLoadingData, expandedRows]);
+  const querying = useMemo(() => isLoadingData || expandedRows.length > 0, [isLoadingData, expandedRows]);
 
-  const setFilterValues = val => {
+  const setFilterValues = (val: any) => {
     if (filterValues.pageNumber === val.pageNumber) {
       val.pageNumber = 1;
     }
@@ -139,7 +123,7 @@ function WorkList({
     setExpandedRows([]);
   };
 
-  const onPageNumberChange = newPageNumber => {
+  const onPageNumberChange = (newPageNumber: number) => {
     const oldPageNumber = filterValues.pageNumber;
     const rollingPageNumberMod = Math.floor(101 / filterValues.resultsPerPage);
     const rollingPageNumber = oldPageNumber % rollingPageNumberMod;
@@ -149,11 +133,10 @@ function WorkList({
     if (isNextPage && !hasNextPage) {
       return;
     }
-
     setFilterValues({ ...filterValues, pageNumber: newPageNumber });
   };
 
-  const onResultsPerPageChange = newResultsPerPage => {
+  const onResultsPerPageChange = (newResultsPerPage: number) => {
     setFilterValues({
       ...filterValues,
       pageNumber: 1,
@@ -161,15 +144,11 @@ function WorkList({
     });
   };
 
-  // Set body style
   useEffect(() => {
     document.body.classList.add('bg-black');
-    return () => {
-      document.body.classList.remove('bg-black');
-    };
+    return () => document.body.classList.remove('bg-black');
   }, []);
 
-  // Sync URL query parameters with filters
   useEffect(() => {
     if (!debouncedFilterValues) {
       return;
@@ -179,8 +158,6 @@ function WorkList({
     Object.keys(defaultFilterValues).forEach(key => {
       const defaultValue = defaultFilterValues[key];
       const currValue = debouncedFilterValues[key];
-
-      // TODO: nesting/recursion?
       if (key === 'studyDate') {
         if (currValue.startDate && defaultValue.startDate !== currValue.startDate) {
           queryString.startDate = currValue.startDate;
@@ -195,50 +172,51 @@ function WorkList({
       }
     });
 
-    const search = qs.stringify(queryString, {
-      skipNull: true,
-      skipEmptyString: true,
-    });
+    const currentParams = new URLSearchParams(window.location.search);
+    const preservedParams = {};
+    for (const [key, value] of currentParams) {
+      if (!queryString.hasOwnProperty(key)) {
+        preservedParams[key] = value;
+      }
+    }
 
-    navigate({
-      pathname: '/',
-      search: search ? `?${search}` : undefined,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedFilterValues]);
+    const finalQueryString = { ...preservedParams, ...queryString };
+    const search = qs.stringify(finalQueryString, { skipNull: true, skipEmptyString: true });
+    const currentHash = window.location.hash || '';
+    const currentPathname = window.location.pathname;
 
-  // Query for series information
+    const currentSearch = window.location.search.slice(1);
+    if (search !== currentSearch) {
+      navigate({
+        pathname: currentPathname,
+        search: search ? `?${search}` : undefined,
+        hash: currentHash,
+      });
+    }
+  }, [debouncedFilterValues, navigate]);
+
   useEffect(() => {
-    const fetchSeries = async studyInstanceUid => {
+    const fetchSeries = async (studyInstanceUid: string) => {
       try {
         const series = await dataSource.query.series.search(studyInstanceUid);
         seriesInStudiesMap.set(studyInstanceUid, sortBySeriesDate(series));
         setStudiesWithSeriesData([...studiesWithSeriesData, studyInstanceUid]);
       } catch (ex) {
-        // TODO: UI Notification Service
         console.warn(ex);
       }
     };
 
-    // TODO: WHY WOULD YOU USE AN INDEX OF 1?!
-    // Note: expanded rows index begins at 1
     for (let z = 0; z < expandedRows.length; z++) {
       const expandedRowIndex = expandedRows[z] - 1;
       const studyInstanceUid = sortedStudies[expandedRowIndex].studyInstanceUid;
-
       if (studiesWithSeriesData.includes(studyInstanceUid)) {
         continue;
       }
-
       fetchSeries(studyInstanceUid);
     }
+  }, [expandedRows, studies, dataSource]);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expandedRows, studies]);
-
-  const isFiltering = (filterValues, defaultFilterValues) => {
-    return !isEqual(filterValues, defaultFilterValues);
-  };
+  const isFiltering = (filterValues: any, defaultFilterValues: any) => !isEqual(filterValues, defaultFilterValues);
 
   const rollingPageNumberMod = Math.floor(101 / resultsPerPage);
   const rollingPageNumber = (pageNumber - 1) % rollingPageNumberMod;
@@ -247,17 +225,7 @@ function WorkList({
   const tableDataSource = sortedStudies.map((study, key) => {
     const rowKey = key + 1;
     const isExpanded = expandedRows.some(k => k === rowKey);
-    const {
-      studyInstanceUid,
-      accession,
-      modalities,
-      instances,
-      description,
-      mrn,
-      patientName,
-      date,
-      time,
-    } = study;
+    const { studyInstanceUid, accession, modalities, instances, description, mrn, patientName, date, time } = study;
     const studyDate =
       date &&
       moment(date, ['YYYYMMDD', 'YYYY.MM.DD'], true).isValid() &&
@@ -265,9 +233,7 @@ function WorkList({
     const studyTime =
       time &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).isValid() &&
-      moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).format(
-        t('Common:localTimeFormat', 'hh:mm A')
-      );
+      moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).format(t('Common:localTimeFormat', 'hh:mm A'));
 
     return {
       dataCY: `studyRow-${studyInstanceUid}`,
@@ -275,18 +241,10 @@ function WorkList({
       row: [
         {
           key: 'patientName',
-          content: patientName ? (
-            <TooltipClipboard>{patientName}</TooltipClipboard>
-          ) : (
-            <span className="text-gray-700">(Empty)</span>
-          ),
+          content: patientName ? <TooltipClipboard>{patientName}</TooltipClipboard> : <span className="text-gray-700">(Empty)</span>,
           gridCol: 4,
         },
-        {
-          key: 'mrn',
-          content: <TooltipClipboard>{mrn}</TooltipClipboard>,
-          gridCol: 3,
-        },
+        { key: 'mrn', content: <TooltipClipboard>{mrn}</TooltipClipboard>, gridCol: 3 },
         {
           key: 'studyDate',
           content: (
@@ -298,22 +256,9 @@ function WorkList({
           title: `${studyDate || ''} ${studyTime || ''}`,
           gridCol: 5,
         },
-        {
-          key: 'description',
-          content: <TooltipClipboard>{description}</TooltipClipboard>,
-          gridCol: 4,
-        },
-        {
-          key: 'modality',
-          content: modalities,
-          title: modalities,
-          gridCol: 3,
-        },
-        {
-          key: 'accession',
-          content: <TooltipClipboard>{accession}</TooltipClipboard>,
-          gridCol: 3,
-        },
+        { key: 'description', content: <TooltipClipboard>{description}</TooltipClipboard>, gridCol: 4 },
+        { key: 'modality', content: modalities, title: modalities, gridCol: 3 },
+        { key: 'accession', content: <TooltipClipboard>{accession}</TooltipClipboard>, gridCol: 3 },
         {
           key: 'instances',
           content: (
@@ -332,8 +277,6 @@ function WorkList({
           gridCol: 2,
         },
       ],
-      // Todo: This is actually running for all rows, even if they are
-      // not clicked on.
       expandedContent: (
         <StudyListExpandedRow
           seriesTableColumns={{
@@ -344,45 +287,29 @@ function WorkList({
           }}
           seriesTableDataSource={
             seriesInStudiesMap.has(studyInstanceUid)
-              ? seriesInStudiesMap.get(studyInstanceUid).map(s => {
-                  return {
-                    description: s.description || '(empty)',
-                    seriesNumber: s.seriesNumber ?? '',
-                    modality: s.modality || '',
-                    instances: s.numSeriesInstances || '',
-                  };
-                })
+              ? seriesInStudiesMap.get(studyInstanceUid).map(s => ({
+                  description: s.description || '(empty)',
+                  seriesNumber: s.seriesNumber ?? '',
+                  modality: s.modality || '',
+                  instances: s.numSeriesInstances || '',
+                }))
               : []
           }
         >
           <div className="flex flex-row gap-2">
             {(appConfig.groupEnabledModesFirst
               ? appConfig.loadedModes.sort((a, b) => {
-                  const isValidA = a.isValidMode({
-                    modalities: modalities.replaceAll('/', '\\'),
-                    study,
-                  }).valid;
-                  const isValidB = b.isValidMode({
-                    modalities: modalities.replaceAll('/', '\\'),
-                    study,
-                  }).valid;
-
+                  const isValidA = a.isValidMode({ modalities: modalities.replaceAll('/', '\\'), study }).valid;
+                  const isValidB = b.isValidMode({ modalities: modalities.replaceAll('/', '\\'), study }).valid;
                   return isValidB - isValidA;
                 })
               : appConfig.loadedModes
             ).map((mode, i) => {
               const modalitiesToCheck = modalities.replaceAll('/', '\\');
-
               const { valid: isValidMode, description: invalidModeDescription } = mode.isValidMode({
                 modalities: modalitiesToCheck,
                 study,
               });
-              // TODO: Modes need a default/target route? We mostly support a single one for now.
-              // We should also be using the route path, but currently are not
-              // mode.routeName
-              // mode.routes[x].path
-              // Don't specify default data source, and it should just be picked up... (this may not currently be the case)
-              // How do we know which params to pass? Today, it's just StudyInstanceUIDs and configUrl if exists
               const query = new URLSearchParams();
               if (filterValues.configUrl) {
                 query.append('configUrl', filterValues.configUrl);
@@ -393,19 +320,13 @@ function WorkList({
                   <Link
                     className={isValidMode ? '' : 'cursor-not-allowed'}
                     key={i}
-                    to={`${dataPath ? '../../' : ''}${mode.routeName}${
-                      dataPath || ''
-                    }?${query.toString()}`}
+                    to={`${dataPath ? '../../' : ''}${mode.routeName}${dataPath || ''}?${query.toString()}`}
                     onClick={event => {
-                      // In case any event bubbles up for an invalid mode, prevent the navigation.
-                      // For example, the event bubbles up when the icon embedded in the disabled button is clicked.
                       if (!isValidMode) {
                         event.preventDefault();
                       }
                     }}
-                    // to={`${mode.routeName}/dicomweb?StudyInstanceUIDs=${studyInstanceUid}`}
                   >
-                    {/* TODO revisit the completely rounded style of buttons used for launching a mode from the worklist later - for now use LegacyButton*/}
                     <Button
                       type={ButtonEnums.type.primary}
                       size={ButtonEnums.size.medium}
@@ -422,7 +343,7 @@ function WorkList({
                           className="!h-[20px] !w-[20px] text-black"
                           name={isValidMode ? 'launch-arrow' : 'launch-info'}
                         />
-                      } // launch-arrow | launch-info
+                      }
                       onClick={() => {}}
                       dataCY={`mode-${mode.routeName}-${studyInstanceUid}`}
                       className={isValidMode ? 'text-[13px]' : 'bg-[#222d44] text-[13px]'}
@@ -436,8 +357,7 @@ function WorkList({
           </div>
         </StudyListExpandedRow>
       ),
-      onClickRow: () =>
-        setExpandedRows(s => (isExpanded ? s.filter(n => rowKey !== n) : [...s, rowKey])),
+      onClickRow: () => setExpandedRows(s => (isExpanded ? s.filter(n => rowKey !== n) : [...s, rowKey])),
       isExpanded,
     };
   });
@@ -466,7 +386,7 @@ function WorkList({
           title: t('UserPreferencesModal:User preferences'),
           content: UserPreferences,
           contentProps: {
-            hotkeyDefaults: hotkeysManager.getValidHotkeyDefinitions(hotkeyDefaults),
+            hotkeyDefaults: hotkeysManager?.getValidHotkeyDefinitions?.(hotkeyDefaults) || hotkeyDefaults,
             hotkeyDefinitions,
             onCancel: hide,
             currentLanguage: currentLanguage(),
@@ -476,10 +396,10 @@ function WorkList({
               if (state.language.value !== currentLanguage().value) {
                 i18n.changeLanguage(state.language.value);
               }
-              hotkeysManager.setHotkeys(state.hotkeyDefinitions);
+              hotkeysManager?.setHotkeys?.(state.hotkeyDefinitions);
               hide();
             },
-            onReset: () => hotkeysManager.restoreDefaultBindings(),
+            onReset: () => hotkeysManager?.restoreDefaultBindings?.(),
             hotkeysModule: hotkeys,
           },
         }),
@@ -490,15 +410,12 @@ function WorkList({
     menuOptions.push({
       icon: 'power-off',
       title: t('Header:Logout'),
-      onClick: () => {
-        navigate(`/logout?redirect_uri=${encodeURIComponent(window.location.href)}`);
-      },
+      onClick: () => navigate(`/logout?redirect_uri=${encodeURIComponent(window.location.href)}`),
     });
   }
 
   const { customizationService } = servicesManager.services;
-  const { component: dicomUploadComponent } =
-    customizationService.get('dicomUploadComponent') ?? {};
+  const { component: dicomUploadComponent } = customizationService.get('dicomUploadComponent') ?? {};
   const uploadProps =
     dicomUploadComponent && dataSource.getConfig()?.dicomUploadEnabled
       ? {
@@ -513,11 +430,7 @@ function WorkList({
               onRefresh();
             },
             onStarted: () => {
-              show({
-                ...uploadProps,
-                // when upload starts, hide the default close button as closing the dialogue must be handled by the upload dialogue itself
-                closeButton: false,
-              });
+              show({ ...uploadProps, closeButton: false });
             },
           }),
         }
@@ -570,7 +483,7 @@ function WorkList({
         ) : (
           <div className="flex flex-col items-center justify-center pt-48">
             {appConfig.showLoadingIndicator && isLoadingData ? (
-              <LoadingIndicatorProgress className={'h-full w-full bg-black'} />
+              <LoadingIndicatorProgress className="h-full w-full bg-black" />
             ) : (
               <EmptyStudies />
             )}
@@ -589,15 +502,13 @@ WorkList.propTypes = {
   }).isRequired,
   isLoadingData: PropTypes.bool.isRequired,
   servicesManager: PropTypes.object.isRequired,
+  hotkeysManager: PropTypes.object,
 };
 
 const defaultFilterValues = {
   patientName: '',
   mrn: '',
-  studyDate: {
-    startDate: null,
-    endDate: null,
-  },
+  studyDate: { startDate: null, endDate: null },
   description: '',
   modalities: [],
   accession: '',
@@ -609,17 +520,15 @@ const defaultFilterValues = {
   configUrl: null,
 };
 
-function _tryParseInt(str, defaultValue) {
+function _tryParseInt(str: string, defaultValue: any) {
   let retValue = defaultValue;
-  if (str && str.length > 0) {
-    if (!isNaN(str)) {
-      retValue = parseInt(str);
-    }
+  if (str && str.length > 0 && !isNaN(str as any)) {
+    retValue = parseInt(str);
   }
   return retValue;
 }
 
-function _getQueryFilterValues(params) {
+function _getQueryFilterValues(params: URLSearchParams) {
   const newParams = new URLSearchParams();
   for (const [key, value] of params) {
     newParams.set(key.toLowerCase(), value);
@@ -644,16 +553,12 @@ function _getQueryFilterValues(params) {
     configUrl: params.get('configurl'),
   };
 
-  // Delete null/undefined keys
-  Object.keys(queryFilterValues).forEach(
-    key => queryFilterValues[key] == null && delete queryFilterValues[key]
-  );
+  Object.keys(queryFilterValues).forEach(key => queryFilterValues[key] == null && delete queryFilterValues[key]);
 
   return queryFilterValues;
 }
 
-function _sortStringDates(s1, s2, sortModifier) {
-  // TODO: Delimiters are non-standard. Should we support them?
+function _sortStringDates(s1: any, s2: any, sortModifier: number) {
   const s1Date = moment(s1.date, ['YYYYMMDD', 'YYYY.MM.DD'], true);
   const s2Date = moment(s2.date, ['YYYYMMDD', 'YYYY.MM.DD'], true);
 

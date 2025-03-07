@@ -118,7 +118,9 @@ function Local({ modePath }: LocalProps) {
     const handlePostMessage = async (event: MessageEvent) => {
       if (event.data.type !== 'ohifReady') {
         const blobs = event.data;
-        onDrop(blobs);
+        if (blobs.length > 0) {
+          onDrop(blobs);
+        }
       }
     };
 
@@ -169,9 +171,12 @@ function Local({ modePath }: LocalProps) {
                 ) : (
                   <div className="space-y-2">
                     <p className="text-xg text-primary-active pt-6 font-semibold">数据加载中，请稍侯...</p>
-
                   </div>
                 )}
+              </div>
+              <div className="flex justify-around pt-4">
+                {getLoadButton(onDrop, 'Load files', false)}
+                {getLoadButton(onDrop, 'Load folders', true)}
               </div>
             </div>
           </div>

@@ -310,17 +310,26 @@ function WorkList({
                 modalities: modalitiesToCheck,
                 study,
               });
-              const query = new URLSearchParams();
+
+              // Preserve all current query parameters and hash
+              const currentParams = new URLSearchParams(window.location.search);
               if (filterValues.configUrl) {
-                query.append('configUrl', filterValues.configUrl);
+                currentParams.set('configUrl', filterValues.configUrl);
               }
-              query.append('StudyInstanceUIDs', studyInstanceUid);
+              currentParams.set('StudyInstanceUIDs', studyInstanceUid);
+              const queryString = currentParams.toString();
+              const currentHash = window.location.hash || '';
+
               return (
                 mode.displayName && (
                   <Link
                     className={isValidMode ? '' : 'cursor-not-allowed'}
                     key={i}
-                    to={`${dataPath ? '../../' : ''}${mode.routeName}${dataPath || ''}?${query.toString()}`}
+                    to={{
+                      pathname: `${dataPath ? '../../' : ''}${mode.routeName}${dataPath || ''}`,
+                      search: queryString,
+                      hash: currentHash,
+                    }}
                     onClick={event => {
                       if (!isValidMode) {
                         event.preventDefault();

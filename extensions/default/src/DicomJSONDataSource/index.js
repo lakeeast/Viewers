@@ -51,7 +51,7 @@ const findStudies = (key, value) => {
   _store.urls.map(metaData => {
     metaData.studies.map(aStudy => {
       //if (aStudy[key] === value) {
-        studies.push(aStudy);
+      studies.push(aStudy);
       //}
     });
   });
@@ -153,8 +153,24 @@ function createDicomJSONApi(dicomJsonConfig) {
       },
       series: {
         // mapParams: mapParams.bind(),
-        search: () => {
-          console.warn(' DICOMJson QUERY SERIES SEARCH not implemented');
+        search: studyInstanceUid => {
+          let series = [];
+          _store.urls.forEach(metaData => {
+            metaData.studies.forEach(aStudy => {
+              if (aStudy.StudyInstanceUID === studyInstanceUid) {
+                series = series.concat(
+                  aStudy.series.map(s => ({
+                    seriesNumber: String(s.SeriesNumber ?? ''), // Force to string
+                    modality: s.Modality || '',
+                    numSeriesInstances: s.instances ? s.instances.length : 0,
+                    description: s.SeriesDescription || '(empty)',
+                  }))
+                );
+              }
+            });
+          });
+          console.log(`DicomJsonDataSource series.search for ${studyInstanceUid}:`, series); // Debug log
+          return series;
         },
       },
       instances: {

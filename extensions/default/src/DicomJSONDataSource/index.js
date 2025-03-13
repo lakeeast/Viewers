@@ -50,9 +50,12 @@ const findStudies = (key, value) => {
   let studies = [];
   _store.urls.map(metaData => {
     metaData.studies.map(aStudy => {
-      //if (aStudy[key] === value) {
-      studies.push(aStudy);
-      //}
+      // If key is null or empty
+      if (!key) {
+        studies.push(aStudy);
+      } else if (aStudy[key] === value) {
+        studies.push(aStudy);
+      }
     });
   });
   return studies;
@@ -320,6 +323,11 @@ function createDicomJSONApi(dicomJsonConfig) {
     },
     getStudyInstanceUIDs: ({ params, query }) => {
       const url = query.get('url');
+      const currentStudyInstanceUID = query.get('StudyInstanceUIDs');
+      if (currentStudyInstanceUID) {
+        return currentStudyInstanceUID.split(','); // Split into array if comma-separated
+      }
+
       return _store.studyInstanceUIDMap.get(url);
     },
   };

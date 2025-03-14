@@ -183,12 +183,10 @@ function WorkList({
     const finalQueryString = { ...preservedParams, ...queryString };
     const search = qs.stringify(finalQueryString, { skipNull: true, skipEmptyString: true });
     const currentHash = window.location.hash || '';
-    const currentPathname = window.location.pathname;
-
     const currentSearch = window.location.search.slice(1);
     if (search !== currentSearch) {
       navigate({
-        pathname: currentPathname,
+        pathname: '/',
         search: search ? `?${search}` : undefined,
         hash: currentHash,
       });
